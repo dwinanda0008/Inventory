@@ -1,0 +1,55 @@
+<?php
+include 'config.php';
+$id = (int)($_GET['id'] ?? 0);
+$sql = "SELECT * FROM tb_inventory WHERE id_barang = $id";
+$result = $conn->query($sql);
+if ($result->num_rows == 0) die("Data tidak ditemukan");
+$row = $result->fetch_assoc();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pakai = (int)$_POST['jumlah_pakai'];
+    if ($pakai <= 0) {
+        $error = "Jumlah pemakaian harus lebih dari 0.";
+    } elseif ($pakai > $row['jumlah_barang']) {
+        $error = "Jumlah pemakaian melebihi stok yang tersedia.";
+    } else {
+        $new_jumlah = $row['jumlah_barang'] - $pakai;
+        $new_status = $new_jumlah == 0 ? 0 : 1;
+        $update_sql = "UPDATE tb_inventory SET jumlah_barang = $new_jumlah, status_barang = $new_status WHERE id_barang = $id";
+        if ($conn->query($update_sql)) {
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Error update: " . $conn->error;
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Pemakaian Barang</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Pemakaian Barang - <?= htmlspecialchars($row['nama_barang']) ?></h2>
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger"><?= $error ?></div>
+    <?php endif; ?>
+    <form method="POST">
+        <div class="form-group">
+            <label>Jumlah Stok Saat Ini: <?= $row['jumlah_barang'] ?> <?= htmlspecialchars($row['satuan_barang']) ?></label>
+        </div>
+        <div class="form-group">
+            <label>Jumlah Pemakaian</label>
+            <input type="number" name="jumlah_pakai" min="1" max="<?= $row['jumlah_barang'] ?>" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Kurangi Stok</button>
+        <a href="index.php" class="btn btn-secondary">Kembali</a>
+    </form>
+</div>
+</body>
+</html>
